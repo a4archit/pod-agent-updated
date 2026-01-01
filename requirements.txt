@@ -1,7 +1,12 @@
 langchain_google_genai
 langchain 
 langgraph
+langchain_community
 streamlit
 dotenv
+qdrant-client
+langchain-qdrant
+pypdf
+
 # for local development only - not for deployment
 ipykernel

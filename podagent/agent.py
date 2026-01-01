@@ -10,7 +10,6 @@ from langgraph.graph.message import add_messages
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
-# local
 # built-in
 from typing import List, Optional, Literal, Annotated, Dict
 
@@ -36,9 +35,9 @@ COMMON_LLM = "gemini-2.5-flash"
 COMMON_TOKENS_SIZE = 32000
 
 
+class PodagentConfigs:
 
-
-
+    pdf_path: str = "/home/archit-elitebook/workarea/products/podagent/file.pdf"
 
 
 

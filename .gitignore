@@ -1,0 +1,5 @@
+venv
+*.env
+*.ipynb
+local_dev.md
+*.pdf
