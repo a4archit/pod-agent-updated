@@ -9,7 +9,7 @@ from typing import Literal, Dict, List, Annotated, Optional
 # local 
 from pdf_processor import PDFProcessor
 from configs import PodagentConfigs
-from faiss_manager import setup_temp_faiss
+from faiss_manager import setup_temp_faiss, FAISSTempManager
 
 # built in
 from configs import QDRANT_CLIENT_URL, EMBEDDING_MODEL
@@ -42,18 +42,27 @@ class ConversationalAgenticRAG:
         
         """ constructor """
 
+        self.__faiss_manager = FAISSTempManager()
+
         self.__file_path = file_path
         self.__chunk_size = 1000
         self.__overlap_size = 200
         self.__embedding_model = None
-        self.__vector_store = None 
+
+        self.__load_embedding_model()
+        self.__vector_store = self.__faiss_manager.load_vector_store(
+            "vector_faiss", embeddings=self.__embedding_model
+        )
+        print(self.__vector_store.docstore._dict)
+
         self.__vector_store_manager = None 
         self.__vector_store_name = None
 
         self.__pdf_texts: List[Document] = None
 
+
         # setup everything here
-        self.__indexing()
+        # self.__indexing() # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< For a testing only
 
 
 
@@ -74,7 +83,9 @@ class ConversationalAgenticRAG:
 
     def __load_pdf_texts(self):
         """ It will load pdf content and update in the variable """
-        self.__pdf_texts = pdf_process.process_pdf(pdf_path=PodagentConfigs.pdf_path)
+        texts = pdf_process.process_pdf(pdf_path=PodagentConfigs.pdf_path)
+
+        self.__pdf_texts = texts[:99] # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< Glue code due to free quota limit, learn more about it in local_dev.md
         
 
 
@@ -156,6 +167,10 @@ class ConversationalAgenticRAG:
 
 
 if __name__ == "__main__":
+
+    from dotenv import load_dotenv
+
+    load_dotenv()
 
     rag = ConversationalAgenticRAG(file_path=PodagentConfigs.pdf_path)
 

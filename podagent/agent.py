@@ -76,58 +76,24 @@ class PodagentSchema(BaseModel):
 
 
 
-
-
-
-
 #------------------------------------------------------------------------------------------
-# Tools
+# Utils
 #------------------------------------------------------------------------------------------
 
-rag = ConversationalAgenticRAG(PodagentConfigs.pdf_path)
-
-@tool
-def retriever(query: str) -> dict:
+def get_last_human_message(messages: List[BaseMessage]) -> HumanMessage:
     """
-    use to get information from knowledge base
+    It will return the last HumanMessage from the provided messages list
     
-    :param query: query that use to retrieve docs
-    :type query: str
-    :return: retrieved docs
-    :rtype: dict
+    :param messages: list of messages
+    :type messages: List[BaseMessage]
+    :return: last human message
+    :rtype: HumanMessage
     """
 
-    retrieved_docs = rag.fetch_docs(query=query, conversational=False)
 
-    merged = ""
-    for doc in retrieved_docs:
-        merged += doc.page_content
-
-    # print(f"\n\nMerged: {merged}")
-
-    return str({ "fetched_docs": merged })
-
-    
-
-
-
-
-
-
-
-
-
-
-
-#------------------------------------------------------------------------------------------
-# Tools binding
-#------------------------------------------------------------------------------------------
-
-tools = [retriever]
-
-llm_with_tools = llm.bind_tools(tools)
-
-
+    for msg in messages[::-1]:
+        if isinstance(msg, HumanMessage):
+            return msg
 
 
 
@@ -146,13 +112,7 @@ llm_with_tools = llm.bind_tools(tools)
 def agent_chat_node(state: PodagentSchema):
     messages = state.model_dump()['messages']
     print(f"\n\nAgent chat node [come in] -> messages: {messages}")
-    response = llm_with_tools.invoke(messages)
-    # final_response = {
-    #     "messages": messages + [{
-    #         "role": "assistant",
-    #         "content": response.content
-    #     }]
-    # }
+    response = llm.invoke(f"{messages}, \n\nretrieved docs: {state.fetched_docs} ")
 
     final_response = {
         "messages": messages + [response]
@@ -164,31 +124,36 @@ def agent_chat_node(state: PodagentSchema):
 
 
 
+rag = ConversationalAgenticRAG(PodagentConfigs.pdf_path)
 
-tool_node = ToolNode(tools)
-
-
-def should_use_tool(state: PodagentSchema):
-    last_message = state.model_dump()["messages"][-1]
-    # print(last_message)
-    try:
-        if last_message['additional_kwargs']['function_call']:
-            print(f"\n\ncalling tools, here last message is: {last_message}")
-            return "tools"
-        else:
-            "end"
-        # return "tools" if last_message.function_call else "end"
-    except AttributeError:
-        print("\n\nno-function_call exists")
-        return "end"
+def retriever(state: PodagentSchema) -> dict:
+    """
+    use to get information from knowledge base
     
-    # def should_use_tool(state: AgentState):
-    # last_message = state["messages"][-1]
-    # print(last_message)
-    # return "tools" if last_message.additional_kwargs.function_call else "end"
+    :param query: query that use to retrieve docs
+    :type query: str
+    :return: retrieved docs
+    :rtype: dict
+    """
+    query = get_last_human_message(state.messages).content
+    print(f"\n\nQuery = {query}\n")
+    retrieved_docs = rag.fetch_docs(query=query, conversational=False)
+
+    merged = ""
+    for doc in retrieved_docs:
+        merged += doc.page_content
+
+    # print(f"\n\nMerged: {merged}")
+
+    return { "fetched_docs": merged }
 
     
-    
+
+
+
+
+
+
 
 
 
@@ -203,23 +168,12 @@ graph = StateGraph(PodagentSchema)
 
 # adding nodes
 graph.add_node("agent", agent_chat_node)
-graph.add_node("tools", tool_node)
+graph.add_node("retriever", retriever)
 
 # connecting edges
-# graph.add_edge(START, "agent")
-graph.set_entry_point("agent")
-graph.add_conditional_edges(
-    "agent", 
-    should_use_tool, 
-    {
-        "tools": "tools",
-        "end": END
-    }
-)
-
-# graph.add_conditional_edges("agent", tools_condition)
-graph.add_edge("tools", "agent")
-# graph.add_edge("agent", END)
+graph.set_entry_point("retriever")
+graph.add_edge("retriever","agent")
+graph.add_edge("agent", END)
 
 
 # extracting workflow
@@ -237,7 +191,7 @@ workflow = graph.compile()
 
 def test_agent():
 
-    prompt = "what is the conclusion of Auto Park King System"
+    prompt = "list out all chapter names"
     # prompt = "how many states in india"
     initial_state = PodagentSchema(messages=[HumanMessage(content=prompt)])
     response = workflow.invoke(initial_state)

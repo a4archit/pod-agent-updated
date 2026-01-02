@@ -4,3 +4,4 @@ venv
 local_dev.md
 *.pdf
 *faiss
+__pycache__
