@@ -1,64 +1,50 @@
- 
-from langgraph.graph import StateGraph, START, END
-from pydantic import BaseModel, Field
-from langchain_core.prompts import PromptTemplate
-from typing import Annotated, List, Dict, Optional, Literal, AnyStr
+
+
+# --------------------------------------------------------------------------------------------------------------
+#  Dependencies
+# --------------------------------------------------------------------------------------------------------------
+
+# external
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_google_genai import ChatGoogleGenerativeAI
-from dotenv import load_dotenv
+from langgraph.graph import StateGraph, START, END
+from langchain_core.prompts import PromptTemplate
+from langchain_core.documents import Document 
+from pydantic import BaseModel, Field
+from dotenv import load_dotenv 
 
-# from podagent.rag import ConversationalAgenticRAG
+# internal
 from rag import ConversationalAgenticRAG
 from configs import PodagentConfigs
+from utils import get_clean_chunks, load_pdf_content
 
-
+# built in
+from typing import Annotated, List, Dict, Optional, Literal, AnyStr
 import os 
-print(os.getcwd())
-os.chdir("/".join(os.getcwd().split("/")[:-1]))
-print(os.getcwd())
-
  
-from langchain_core.documents import Document 
-from pdf_processor import PDFProcessor
 
- 
-s = "/home/archit-elitebook/workarea/products/podagent/podagent"
-"/".join(s.split("/")[:-1])
 
- 
+
+
+
+
+
+
+## loading secret keys
 load_dotenv()
 
  
 
 
-# util function
-def get_clean_chunks(chunks: List[Document], plain_text: bool = False) -> str:
-    
-    result = ""
 
-    for chunk in chunks:
-        if not plain_text:
-            result += f"\n\n{10*'-'}\n"
-            result += f"[Chunk page number: {chunk.metadata['page']}]\n"
-            
-        result += chunk.page_content 
-
-    result += f"\n\n{10*'-'}\n\n"
-    return result
-
-
-
- 
-import os
-
-os.getenv("GOOGLE_API_KEY")
 
  
 #------------------------------------------------------------------------------------------
 # Confiurations
 #------------------------------------------------------------------------------------------
 
-COMMON_LLM = "gemma-3-12b"
+# COMMON_LLM = "gemma-3-12b" 
+COMMON_LLM = PodagentConfigs.COMMON_LLM
 COMMON_TOKENS_SIZE = 32000
 
 
@@ -68,22 +54,32 @@ COMMON_TOKENS_SIZE = 32000
 #------------------------------------------------------------------------------------------
 
 llm = ChatGoogleGenerativeAI(
-    model = "gemini-2.5-flash",
+    model = COMMON_LLM,
     verbose = False,
     max_tokens = COMMON_TOKENS_SIZE,
     temperature = 0.3 
 )
 
 
- 
-llm._get_llm_string()
 
- 
+
+
+
+
+
+
+
+
+
+#------------------------------------------------------------------------------------------
+# Agent State
+#------------------------------------------------------------------------------------------
+
 class ChapterContentLoaderAgentState(BaseModel):
 
     user_query: Annotated[str, Field(..., title="user query", description="exact user query")]
     fetched_chapter_name_or_number: Optional[Dict[str,str|int|None]]
-    message: Optional[str]
+    message: Optional[str] = ""
 
     chapter_name: Optional[str] = "" 
     chapter_number: Optional[str|int] = 0
@@ -93,11 +89,37 @@ class ChapterContentLoaderAgentState(BaseModel):
     chapter_content: Optional[str] = ""
 
 
+
+
+
+
+#------------------------------------------------------------------------------------------
+# 
+#          Nodes development starts from here
+# 
+#------------------------------------------------------------------------------------------
+
+
+
+
+
+# ------------------------------------- Node 1 --------------------------------------------
+
+
+#------------------------------------------------------------------------------------------
+# LLM Output parser schema
+#------------------------------------------------------------------------------------------
  
 class FetchChapterNameParser(BaseModel):
-    chapter_name: Annotated[Optional[str], Field(str(None), title="chapter name")] = None 
-    chapter_number: Annotated[Optional[str], Field(str(None), title="chapter number")] = None
+    chapter_name: Annotated[Optional[str], Field(..., title="chapter name")] = None 
+    chapter_number: Annotated[Optional[int], Field(..., title="chapter number")] = None
 
+
+
+
+#------------------------------------------------------------------------------------------
+# Node 
+#------------------------------------------------------------------------------------------
 
 def fetch_chapter_name(state: ChapterContentLoaderAgentState):
     user_query: str = state.model_dump()['user_query']
@@ -124,32 +146,38 @@ user_query: {user_query}
     return { "fetched_chapter_name_or_number": result.model_dump() }
 
  
-# initial_state = ChapterContentLoaderAgentState(user_query="give me some questions from chapter")
 
  
-# response = fetch_chapter_name(initial_state)
 
- 
-# print(response.model_dump())
+#------------------------------------------------------------------------------------------
+# Orchestrator function 
+#------------------------------------------------------------------------------------------
 
- 
 def orchestrator(
         state: ChapterContentLoaderAgentState
-    ) -> Literal["fetch_chapter_page_number","ch_not_found"]:
+    ) -> Literal["ch_found","ch_not_found"]:
 
     """ it will orchestrate the route depends on chapter name/numbe found or not """
 
     _state: dict = state.model_dump()
-    ch_name, ch_number = _state['chapter_name'], _state['chapter_number']
+    ch_name = _state['fetched_chapter_name_or_number']['chapter_name']
+    ch_number = _state['fetched_chapter_name_or_number']['chapter_number']
 
-    if not (ch_name or ch_number):
+    if ch_name or ch_number:
         # no chapter found
-        return "ch_not_found"
+        return "ch_found"
     
-    return "fetch_chapter_page_number"
+    return "ch_not_found"
 
 
  
+
+
+
+#------------------------------------------------------------------------------------------
+# Node 2
+#------------------------------------------------------------------------------------------
+
 def update_msg_chapter_not_found(state: ChapterContentLoaderAgentState):
     """Updating message in state when chapter name and chapter serial number not found.
 
@@ -164,13 +192,27 @@ def update_msg_chapter_not_found(state: ChapterContentLoaderAgentState):
 
  
 
-rag = ConversationalAgenticRAG(PodagentConfigs.pdf_path)
 
-print(rag.get_vector_store_manager().list_disk_stores())
+
+
+
+# ----------------------------------------- Node 3 ----------------------------------------
+
+#------------------------------------------------------------------------------------------
+# Loading RAG for this node
+#------------------------------------------------------------------------------------------
+
+rag = ConversationalAgenticRAG(PodagentConfigs.pdf_path)
 
 rag.load_vector_store()
 
 
+
+
+
+#------------------------------------------------------------------------------------------
+# LLM Output parser schema 
+#------------------------------------------------------------------------------------------
  
 class FetchChapterPageNumberParserSchema(BaseModel):
     
@@ -202,6 +244,12 @@ class FetchChapterPageNumberParserSchema(BaseModel):
 
 
 
+
+
+
+#------------------------------------------------------------------------------------------
+# Node 4
+#------------------------------------------------------------------------------------------
 
 def fetch_chapter_page_number(state: ChapterContentLoaderAgentState):
 
@@ -281,22 +329,16 @@ OUTPUT FORMAT INSTRUCTIONS:
 
 
  
-# initial_state = ChapterContentLoaderAgentState(
-#     user_query="no-query",
-#     fetched_chapter_name_or_number={
-#         "chapter_name":"particulate nature of mater",
-#         "chapter_number":0
-#     },
-#     message="no-msg"
-# )
-# response = fetch_chapter_page_number(initial_state)
 
+
+
+
+
+
+#------------------------------------------------------------------------------------------
+# Node 5
+#------------------------------------------------------------------------------------------
  
-# response
-
- 
-pdf_processor = PDFProcessor()
-
 def fetch_content_from_x_to_y_page(state: ChapterContentLoaderAgentState):
 
     _state = state.model_dump()
@@ -306,9 +348,9 @@ def fetch_content_from_x_to_y_page(state: ChapterContentLoaderAgentState):
     starting_page_no = chapter_page_number + table_of_contents_page_no + 2
 
     # loading pdf selective pages
-    pages_content = pdf_processor.load_pdf(
-        pdf_path=PodagentConfigs.pdf_path,
-        _from = starting_page_no,
+    pages_content = load_pdf_content(
+        PodagentConfigs.pdf_path,
+        _from = starting_page_no, 
         to = starting_page_no + 7 # next 7 pages of chapter
     )
 
@@ -316,43 +358,33 @@ def fetch_content_from_x_to_y_page(state: ChapterContentLoaderAgentState):
 
 
  
-# initial_state = ChapterContentLoaderAgentState(
-#     user_query="no",
-#     fetched_chapter_name_or_number=None,
-#     message=None, 
-#     chapter_page_number=80,
-#     table_of_contents_page_no=19
-# )
-
-# response = fetch_content_from_x_to_y_page(initial_state)
-
- 
-# print(get_clean_chunks(response, plain_text=True))
-
- 
 
 
  
 
 
+
+#------------------------------------------------------------------------------------------
+# Building Agent
+#------------------------------------------------------------------------------------------
  
-# graph
+# ------------------- defining graph -------------------------
 graph = StateGraph(ChapterContentLoaderAgentState)
 
-# adding nodes
+# ------------------- adding nodes ---------------------------
 graph.add_node("fetch_ch_name", fetch_chapter_name)
 graph.add_node("fetch_ch_page_no", fetch_chapter_page_number)
 graph.add_node("load_ch_content", fetch_content_from_x_to_y_page)
 graph.add_node("update_msg_in_state", update_msg_chapter_not_found)
 
 
-# connecting edges
+# ------------------ connecting edges ------------------------
 graph.set_entry_point("fetch_ch_name")
 graph.add_conditional_edges(
     source="fetch_ch_name",
     path=orchestrator,
     path_map={
-        "fetch_chapter_page_number":"fetch_ch_page_no",
+        "ch_found":"fetch_ch_page_no",
         "ch_not_found": "update_msg_in_state" 
     }
 )
@@ -361,24 +393,61 @@ graph.add_edge("load_ch_content", END)
 graph.add_edge("update_msg_in_state",END)
 
 
-# compilation
+# ------------------- graph compilation -----------------------
 workflow = graph.compile()
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#------------------------------------------------------------------------------------------
+# Test function
+#------------------------------------------------------------------------------------------
  
-workflow
+def test_agent():
+    initial_state = ChapterContentLoaderAgentState(
+        user_query="generate a quiz of 13 chapter",
+        fetched_chapter_name_or_number=None
+    )
+    
+    response = workflow.invoke(initial_state)
+    
+    print(response['chapter_content'])
 
  
-initial_state = ChapterContentLoaderAgentState(
-    user_query="generate a quiz of chapter light mirrors and lenses",
-    fetched_chapter_name_or_number=None,
-    message=None
-)
+
 
  
-response = workflow.invoke(initial_state)
+
+
+
+
+
+
+
+
+
+if __name__ == "__main__":
+
+    test_agent()
+
+
 
  
-response
+
 
  
 

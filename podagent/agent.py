@@ -209,7 +209,9 @@ def test_agent():
 
 if __name__ == "__main__":
 
-    test_agent()
+    from subagents.chapter_content_loader import test_agent as t2
+
+    t2()
 
     # initial_state = PodagentSchema(messages=[HumanMessage(content="hello")])
 

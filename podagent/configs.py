@@ -11,6 +11,8 @@ class PodagentConfigs:
 
     pdf_path: str = "/home/archit-elitebook/workarea/products/podagent/cls_8_science_ncert.pdf"
 
+    COMMON_LLM = "gemini-2.5-flash"
+
 
 
 

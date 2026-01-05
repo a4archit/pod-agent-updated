@@ -8,5 +8,6 @@ qdrant-client
 langchain-qdrant
 pypdf
 faiss-cpu
+pymupdf
 # for local development only - not for deployment
 ipykernel

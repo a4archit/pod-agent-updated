@@ -23,7 +23,8 @@ Add a node in `ChapterContentLoader` subagent that tells the page number of firs
 ### 2) Huge time while fetching a particular chapter.
 
 Reason: Most use of Glue code
-    Solution: Use genunine methods to load a particular chapter content. Handle this situation on `PDFProcessor().load_pdf()` in `pdf_processor.py`
+Solution: Use genunine methods to load a particular chapter content. Handle this situation on `PDFProcessor().load_pdf()` in `pdf_processor.py`
+It will be descrease about ~20 seconds of latency.
 
 
 
