@@ -2,13 +2,13 @@ import streamlit as st
 from langchain_core.messages import HumanMessage, AIMessage
 
 from podagent_module.rag import ConversationalAgenticRAG
-from podagent_module import PodagentConfigs
+from podagent_module import PodagentConfigs, PodAgent
 
 import os 
 import shutil
 
 if os.path.exists(PodagentConfigs.pdf_path):
-    from podagent_module.agent import workflow, PodagentSchema as State
+    from podagent_module.agent import PodagentSchema as State
 
 
 
@@ -97,11 +97,12 @@ def working_page() -> None:
                     rag.indexing()
                     rag.load_vector_store()
 
+
                 with st.spinner(text="Building model..."):
                     # st.write(uploaded_file._file_urls.upload_url)
                     # creating apcas model instance
                     # st.session_state.apcas = APCAS_2_0(pdf_path=file_path)
-                    pass
+                    st.session_state.pod_agent = PodAgent()
 
     
 
@@ -120,7 +121,7 @@ def working_page() -> None:
             store_path = "./temp_faiss/vec_db_faiss"
             if os.path.exists(store_path):
                 shutil.rmtree(store_path)
-                
+
             # Stop here to prevent rendering the rest
             st.rerun()
 
@@ -152,7 +153,7 @@ def working_page() -> None:
                 # -------------------- calling agent here ------------------------
                 initial_state = State(messages=[HumanMessage(prompt)])
                 # getting response
-                final_state = workflow.invoke(initial_state)
+                final_state = st.session_state.pod_agent.workflow.invoke(initial_state)
                 print(final_state)
                 ai_msg = final_state['messages'][-1].content
 

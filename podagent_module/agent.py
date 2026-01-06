@@ -15,11 +15,16 @@ from dotenv import load_dotenv
 
 # local
 # from rag import ConversationalAgenticRAG
-from podagent_module import *
-# from configs import PodagentConfigs
-# from utils import save_workflow_diagram
-# from subagents.chapter_content_loader import load_chapter_content_loader_agent, ChapterContentLoaderAgentState
-# from subagents.quiz_generator import load_quiz_generator_agent, GenerateQuizAgentState, MCQ
+# from podagent_module import (
+#     load_chapter_content_loader_agent, load_quiz_generator_agent, 
+#     save_workflow_diagram, ChapterContentLoaderAgentState, MCQ, 
+#     GenerateQuizAgentState, PodagentConfigs, ConversationalAgenticRAG
+# )
+from podagent_module.rag import ConversationalAgenticRAG
+from podagent_module.configs import PodagentConfigs
+from podagent_module.utils import save_workflow_diagram
+from podagent_module.subagents.chapter_content_loader import load_chapter_content_loader_agent, ChapterContentLoaderAgentState
+from podagent_module.subagents.quiz_generator import load_quiz_generator_agent, GenerateQuizAgentState, MCQ
 
 # built-in
 from typing import List, Optional, Literal, Annotated, Dict
@@ -38,18 +43,101 @@ load_dotenv()
 
 
 
+
+
+
+
+
+
+
+
+class PodAgent:
+
+    def __init__(self):
+
+            
+        #------------------------------------------------------------------------------------------
+        # Workflow
+        #------------------------------------------------------------------------------------------
+
+        # ------------------------- graph instance -----------------------
+        graph = StateGraph(PodagentSchema)
+
+        # adding nodes
+        graph.add_node("agent", agent_chat_node)
+        graph.add_node("retriever", retriever)
+        graph.add_node("quiz_generator", quiz_generator_subagent_node)
+        graph.add_node("ch_content_loader", chapter_content_loader_subagent_node)
+
+
+        # ------------------------- connecting edges ---------------------
+        graph.set_entry_point("retriever")
+        graph.add_edge("retriever","agent")
+        graph.add_conditional_edges(
+            source="agent",
+            path=orchestrator,
+            path_map={
+                'generate_quiz': 'quiz_generator', 
+                'load_chapter_content': 'ch_content_loader',
+                'end': END
+            }
+        )
+        graph.add_edge("quiz_generator","agent")
+        graph.add_edge("ch_content_loader", "agent")
+
+
+        # ----------------------- extracting workflow ---------------------
+        self.workflow = graph.compile()
+
+    
+
+
+    # @staticmethod
+    # def 
+    # chapter_content_loader_subagent = load_chapter_content_loader_agent()
+
+    # quiz_generator_subagent = load_quiz_generator_agent()
+
+
+
+
+
+    @staticmethod
+    def get_rag():
+        rag = ConversationalAgenticRAG(PodagentConfigs.pdf_path)
+        rag.load_vector_store()
+        return rag
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #------------------------------------------------------------------------------------------
 # Loading sub agents
 #------------------------------------------------------------------------------------------
 
-chapter_content_loader_subagent = load_chapter_content_loader_agent()
+# chapter_content_loader_subagent = load_chapter_content_loader_agent()
 
-quiz_generator_subagent = load_quiz_generator_agent()
+# quiz_generator_subagent = load_quiz_generator_agent()
 
 
 # ---------------- saving workflows (sub agents) diagrams -------------------
-save_workflow_diagram(chapter_content_loader_subagent, name="chapter_content_loader_subagent.png")
-save_workflow_diagram(quiz_generator_subagent, name="quiz_generator_subagent.png")
+# save_workflow_diagram(chapter_content_loader_subagent, name="chapter_content_loader_subagent.png")
+# save_workflow_diagram(quiz_generator_subagent, name="quiz_generator_subagent.png")
 
 
 
@@ -336,10 +424,6 @@ def agent_chat_node(state: PodagentSchema):
 # Node: RAG node
 #------------------------------------------------------------------------------------------
 
-
-rag = ConversationalAgenticRAG(PodagentConfigs.pdf_path)
-rag.load_vector_store()
-
 def retriever(state: PodagentSchema) -> dict:
     """
     use to get information from knowledge base
@@ -352,6 +436,7 @@ def retriever(state: PodagentSchema) -> dict:
     print(" [retriever] ", end="")
     query = get_last_human_message(state.messages).content
     # print(f"\n\nQuery = {query}\n")
+    rag = PodAgent().get_rag()
     retrieved_docs = rag.fetch_docs(query=query, conversational=False)
 
     merged = ""
@@ -385,6 +470,8 @@ def chapter_content_loader_subagent_node(state: PodagentSchema):
         fetched_chapter_name_or_number=None 
     )
 
+    chapter_content_loader_subagent = load_chapter_content_loader_agent()
+
     # calling subagent
     final_state = chapter_content_loader_subagent.invoke(initial_state)
 
@@ -417,6 +504,8 @@ def quiz_generator_subagent_node(state: PodagentSchema):
         number_of_questions=5 
     )
 
+    quiz_generator_subagent = load_quiz_generator_agent()
+
     # calling subagent
     final_state = quiz_generator_subagent.invoke(initial_state)
 
@@ -430,39 +519,6 @@ def quiz_generator_subagent_node(state: PodagentSchema):
 
 
 
-
-#------------------------------------------------------------------------------------------
-# Workflow
-#------------------------------------------------------------------------------------------
-
-# ------------------------- graph instance -----------------------
-graph = StateGraph(PodagentSchema)
-
-# adding nodes
-graph.add_node("agent", agent_chat_node)
-graph.add_node("retriever", retriever)
-graph.add_node("quiz_generator", quiz_generator_subagent_node)
-graph.add_node("ch_content_loader", chapter_content_loader_subagent_node)
-
-
-# ------------------------- connecting edges ---------------------
-graph.set_entry_point("retriever")
-graph.add_edge("retriever","agent")
-graph.add_conditional_edges(
-    source="agent",
-    path=orchestrator,
-    path_map={
-        'generate_quiz': 'quiz_generator', 
-        'load_chapter_content': 'ch_content_loader',
-        'end': END
-    }
-)
-graph.add_edge("quiz_generator","agent")
-graph.add_edge("ch_content_loader", "agent")
-
-
-# ----------------------- extracting workflow ---------------------
-workflow = graph.compile()
 
 
 # # ------------------------- saving workflow diagram ----------------
@@ -479,8 +535,8 @@ workflow = graph.compile()
 
 
 
-def load_podagent():
-    return workflow, PodagentSchema
+# def load_podagent():
+#     return workflow, PodagentSchema
 
 
 

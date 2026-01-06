@@ -206,8 +206,8 @@ def update_msg_chapter_not_found(state: ChapterContentLoaderAgentState):
 #------------------------------------------------------------------------------------------
 
 rag = ConversationalAgenticRAG(PodagentConfigs.pdf_path)
-
-rag.load_vector_store()
+if rag.get_vector_store_manager().list_disk_stores():
+    rag.load_vector_store()
 
 
 

@@ -2,7 +2,7 @@ from podagent_module.rag import ConversationalAgenticRAG
 from podagent_module.pdf_processor import PDFProcessor
 # from configs import PodagentConfigs
 from podagent_module.faiss_manager import FAISSTempManager
-
+from podagent_module.agent import PodAgent
 from podagent_module.configs import PodagentConfigs, Quiz
 from podagent_module.utils import save_workflow_diagram
 from podagent_module.subagents.chapter_content_loader import load_chapter_content_loader_agent, ChapterContentLoaderAgentState
@@ -20,7 +20,8 @@ __all__ = [
     "GenerateQuizAgentState",
     "MCQ",
     "PDFProcessor",
-    "FAISSTempManager"
+    "FAISSTempManager",
+    "PodAgent"
 ]
 
 
