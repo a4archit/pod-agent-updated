@@ -11,7 +11,7 @@ class PodagentConfigs:
 
     pdf_path: str = "user_uploaded_file.pdf"
 
-    COMMON_LLM = "gemini-2.5-flash-lite"
+    COMMON_LLM = "gemini-2.5-flash"
 
 
 

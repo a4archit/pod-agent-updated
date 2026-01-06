@@ -1,9 +1,23 @@
 import streamlit as st
-from podagent_module.agent import workflow, PodagentSchema as State
-from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
-import uuid
+from langchain_core.messages import HumanMessage, AIMessage
 
-# **************************************** utility functions *************************
+from podagent_module.rag import ConversationalAgenticRAG
+from podagent_module import PodagentConfigs, PodAgent
+
+import os 
+import shutil
+
+if os.path.exists(PodagentConfigs.pdf_path):
+    from podagent_module.agent import PodagentSchema as State
+
+
+
+
+
+def stream_text(text: str) :
+    for word in text.split(" "):
+        yield f" {word}"
+
 
 def stream_agent_response(message: str) :
     initial_state = State(messages=[HumanMessage(message)])
@@ -17,123 +31,184 @@ def stream_agent_response(message: str) :
 
 
 
-# def generate_thread_id():
-#     thread_id = uuid.uuid4()
-#     return thread_id
+@st.dialog("Quiz")
+def quiz_dialog(quiz_mcqs):
+    answers = list()
+    for index,mcq in enumerate(quiz_mcqs):
+        # st.write(f"{index+1}) {mcq['question']}")
+        ans = st.radio(
+            f"{index+1}) {mcq['question']}",
+            mcq['options'],
+            index=None
+        )
 
-# def reset_chat():
-#     thread_id = generate_thread_id()
-#     st.session_state['thread_id'] = thread_id
-#     add_thread(st.session_state['thread_id'])
-#     st.session_state['message_history'] = []
+        answers.append(ans)
 
-# def add_thread(thread_id):
-#     if thread_id not in st.session_state['chat_threads']:
-#         st.session_state['chat_threads'].append(thread_id)
+    if st.button("Submit"):
+        score = 0
+        total_score = 10
 
-# def load_conversation(thread_id):
-#     state = chatbot.get_state(config={'configurable': {'thread_id': thread_id}})
-#     # Check if messages key exists in state values, return empty list if not
-#     return state.values.get('messages', [])
+        for index,ques in enumerate(quiz_mcqs):
+            if answers[index] == ques['right_option']:
+                score += 2
 
-
-# **************************************** Session Setup ******************************
-if 'message_history' not in st.session_state:
-    st.session_state['message_history'] = []
-
-# if 'thread_id' not in st.session_state:
-#     st.session_state['thread_id'] = generate_thread_id()
-
-# if 'chat_threads' not in st.session_state:
-#     st.session_state['chat_threads'] = retrieve_all_threads()
-
-# add_thread(st.session_state['thread_id'])
+        st.write(f"You got {score}/{total_score}")
 
 
-# **************************************** Sidebar UI *********************************
-
-st.sidebar.title('Podagent')
-
-# if st.sidebar.button('New Chat'):
-#     reset_chat()
-
-# st.sidebar.header('My Conversations')
-
-# for thread_id in st.session_state['chat_threads'][::-1]:
-#     if st.sidebar.button(str(thread_id)):
-#         st.session_state['thread_id'] = thread_id
-#         messages = load_conversation(thread_id)
-
-#         temp_messages = []
-
-#         for msg in messages:
-#             if isinstance(msg, HumanMessage):
-#                 role='user'
-#             else:
-#                 role='assistant'
-#             temp_messages.append({'role': role, 'content': msg.content})
-
-#         st.session_state['message_history'] = temp_messages
 
 
-# **************************************** Main UI ************************************
 
-# # loading the conversation history
-# for message in st.session_state['message_history']:
-#     with st.chat_message(message['role']):
-#         st.text(message['content'])
+def working_page() -> None:
+    st.set_page_config(page_title="Podagent | Working", page_icon='🤖')
 
-user_input = st.chat_input('Type here')
-
-if user_input:
-
-    # first add the message to message_history
-    st.session_state['message_history'].append({'role': 'user', 'content': user_input})
-    with st.chat_message('user'):
-        st.text(user_input)
-
-    # CONFIG = {'configurable': {'thread_id': st.session_state['thread_id']}}
-
-    # Assistant streaming block
-    with st.chat_message("assistant"):
-        # Use a mutable holder so the generator can set/modify it
-        status_holder = {"box": None}
-
-        # def ai_only_stream():
-        #     for message_chunk, metadata in chatbot.stream(
-        #         {"messages": [HumanMessage(content=user_input)]},
-        #         config=CONFIG,
-        #         stream_mode="messages",
-        #     ):
-        #         # Lazily create & update the SAME status container when any tool runs
-        #         if isinstance(message_chunk, ToolMessage):
-        #             tool_name = getattr(message_chunk, "name", "tool")
-        #             if status_holder["box"] is None:
-        #                 status_holder["box"] = st.status(
-        #                     f"🔧 Using `{tool_name}` …", expanded=True
-        #                 )
-        #             else:
-        #                 status_holder["box"].update(
-        #                     label=f"🔧 Using `{tool_name}` …",
-        #                     state="running",
-        #                     expanded=True,
-        #                 )
-
-        #         # Stream ONLY assistant tokens
-        #         if isinstance(message_chunk, AIMessage):
-        #             yield message_chunk.content
-
-        # ai_message = st.write_stream(ai_only_stream())
-        ai_message = st.write(stream_agent_response(user_input))
-
-        # Finalize only if a tool was actually used
-        if status_holder["box"] is not None:
-            status_holder["box"].update(
-                label="✅ Tool finished", state="complete", expanded=False
-            )
-
-    st.session_state['message_history'].append({'role': 'assistant', 'content': ai_message})
+    # # ----------------------------------------------------------- Sidebar --------------------------------------------------------------- #
+    # st.sidebar.header('Menu', divider=True)
+    # st.sidebar.write('It is basically a RAG (Retrieval Augmented Generation) based web application, \
+    #                 that is optimized for chatting with any PDF in an efficient way.')
+    
 
 
-# print("Everything setup.")
+    # st.sidebar.subheader("Connect with me!")
+    # st.sidebar.write("[Kaggle](https://www.kaggle.com/architty108)")
+    # st.sidebar.write("[Github](https://www.github.com/a4archit)")
+    # st.sidebar.write("[LinkedIn](https://www.linkedin.com/in/a4archit)")
+
+    # if st.sidebar.button('Go to Home', type='primary'):
+    #     st.session_state.page = 'home'
+
+    # --------------------------------------------------------- Body ------------------------------------------------------------------- #
+
+    # Initialize chat mode if not set
+    if "chat_mode" not in st.session_state:
+        st.session_state.chat_mode = False
+
+    # If not chatting yet, show uploader + button
+    if not st.session_state.chat_mode:
+        st.header('Podagent', divider=True)
+
+        uploaded_file = st.file_uploader(
+            label = "Upload PDF",
+            type = 'pdf',
+            accept_multiple_files = False,
+            help = "You can upload your PDF file here."
+        )
+
+        if uploaded_file:
+
+            if st.button(label = 'Chat with this PDF', type='primary'):
+                with st.spinner(text="Saving file..."):
+                    # Switch to chat mode
+                    st.session_state.chat_mode = True
+                    # Store the uploaded file for later use if needed
+                    st.session_state.uploaded_file = uploaded_file
+                    # Clear old messages if any
+                    st.session_state.messages = []
+
+                    # You can read it directly
+                    bytes_data = uploaded_file.read()
+
+                    # Or save it to a file to get a path
+                    with open("user_uploaded_file.pdf", "wb") as f:
+                        f.write(bytes_data)
+
+                    # Now you have a path
+                    file_path = "user_uploaded_file.pdf"
+
+                with st.spinner("Setting up RAG...", show_time=True):
+                    # generate chunks of pdf
+                    rag = ConversationalAgenticRAG(file_path=file_path)
+                    rag.indexing()
+                    rag.load_vector_store()
+
+
+                with st.spinner(text="Building model..."):
+                    # st.write(uploaded_file._file_urls.upload_url)
+                    # creating apcas model instance
+                    # st.session_state.apcas = APCAS_2_0(pdf_path=file_path)
+                    st.session_state.pod_agent = PodAgent()
+
+    
+
+    # If in chat mode, show chat
+    if st.session_state.chat_mode:
+        st.header('Podagent Chat')
+
+        # Try another PDF button
+        if st.button('📄 Try another PDF'):
+            # Reset state to go back to upload mode
+            st.session_state.chat_mode = False
+            st.session_state.uploaded_file = None
+            st.session_state.messages = []
+
+            # rag.delete_all_vector_stores()
+            store_path = "./temp_faiss/vec_db_faiss"
+            if os.path.exists(store_path):
+                shutil.rmtree(store_path)
+
+            # Stop here to prevent rendering the rest
+            st.rerun()
+
+        
+
+        # Initialize session state for messages
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
+
+        # Display previous messages
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.write(message["content"])
+
+        # Chat input box
+        prompt = st.chat_input("Type your message...")
+
+        # When user submits a message
+        if prompt:
+            # Save user message
+            st.session_state.messages.append({"role": "user", "content": prompt})
+
+            # Display user message
+            with st.chat_message("user"):
+                st.write(prompt)
+
+            with st.spinner("Thinking...", show_time=True):
+                
+                # -------------------- calling agent here ------------------------
+                initial_state = State(messages=[HumanMessage(prompt)])
+                # getting response
+                final_state = st.session_state.pod_agent.workflow.invoke(initial_state)
+                print(final_state)
+                ai_msg = final_state['messages'][-1].content
+
+                try:
+                    quiz_mcqs = final_state['quiz']['mcqs']
+                    quiz_dialog(quiz_mcqs)
+
+                except Exception as e:
+                    print("No MCQs fetch from Agent's Final State.")
+            
+                # Save bot message
+                st.session_state.messages.append({"role": "assistant", "content": ai_msg})
+
+            # Display bot message
+            with st.chat_message("assistant"):
+
+                st.write_stream(stream_text(ai_msg), cursor="🤖")
+
+
+
+
+
+
+
+
+
+if __name__ == "__main__":
+    working_page()
+
+
+
+
+
+
 
