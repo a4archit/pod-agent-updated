@@ -1,13 +1,15 @@
 import streamlit as st
 from langchain_core.messages import HumanMessage, AIMessage
-from podagent_module import PodagentConfigs, ConversationalAgenticRAG
-# from podagent_module.rag import ConversationalAgenticRAG
+
+from podagent_module.rag import ConversationalAgenticRAG
+from podagent_module import PodagentConfigs
 
 import os 
+import shutil
 
-
-if os.path.exists(path=PodagentConfigs.pdf_path):
+if os.path.exists(PodagentConfigs.pdf_path):
     from podagent_module.agent import workflow, PodagentSchema as State
+
 
 
 
@@ -91,8 +93,9 @@ def working_page() -> None:
 
                 with st.spinner("Setting up RAG...", show_time=True):
                     # generate chunks of pdf
-                    rag = ConversationalAgenticRAG(file_path="user_uploaded_file.pdf")
+                    rag = ConversationalAgenticRAG(file_path=file_path)
                     rag.indexing()
+                    rag.load_vector_store()
 
                 with st.spinner(text="Building model..."):
                     # st.write(uploaded_file._file_urls.upload_url)
@@ -113,8 +116,14 @@ def working_page() -> None:
             st.session_state.uploaded_file = None
             st.session_state.messages = []
 
+            # rag.delete_all_vector_stores()
+            store_path = "./temp_faiss/vec_db_faiss"
+            if os.path.exists(store_path):
+                shutil.rmtree(store_path)
+                
             # Stop here to prevent rendering the rest
             st.rerun()
+
         
 
         # Initialize session state for messages
