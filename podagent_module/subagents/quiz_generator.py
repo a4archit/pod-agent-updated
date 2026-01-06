@@ -13,9 +13,9 @@ from pydantic import BaseModel, Field
 from dotenv import load_dotenv 
 
 # internal
-from rag import ConversationalAgenticRAG
-from configs import PodagentConfigs, Quiz
-from utils import get_clean_chunks, load_pdf_content
+from podagent_module.rag import ConversationalAgenticRAG
+from podagent_module.configs import PodagentConfigs, Quiz
+from podagent_module.utils import get_clean_chunks, load_pdf_content
 
 # built in
 from typing import Annotated, List, Dict, Optional, Literal, AnyStr

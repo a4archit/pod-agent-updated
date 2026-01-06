@@ -61,5 +61,16 @@ def load_pdf_content(pdf_path: str, _from: int, to: int) -> List[Document]:
 
 
 
+def save_workflow_diagram(workflow, name: str = "workflow.png"):
+
+    # ------------------------- saving workflow diagram ----------------
+    png_bytes = workflow.get_graph().draw_mermaid_png()
+
+    with open(name, "wb") as f:
+        f.write(png_bytes)
+
+
+
+
 
 

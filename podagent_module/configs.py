@@ -21,3 +21,8 @@ class Quiz:
     MCQS: dict 
 
 
+if __name__ == "__main__":
+
+    pass
+
+

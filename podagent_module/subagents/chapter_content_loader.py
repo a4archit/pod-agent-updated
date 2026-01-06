@@ -14,9 +14,9 @@ from pydantic import BaseModel, Field
 from dotenv import load_dotenv 
 
 # internal
-from rag import ConversationalAgenticRAG
-from configs import PodagentConfigs
-from utils import get_clean_chunks, load_pdf_content
+from podagent_module.rag import ConversationalAgenticRAG
+from podagent_module.configs import PodagentConfigs
+from podagent_module.utils import get_clean_chunks, load_pdf_content
 
 # built in
 from typing import Annotated, List, Dict, Optional, Literal, AnyStr
@@ -457,7 +457,16 @@ def test_agent():
 
 if __name__ == "__main__":
 
-    test_agent()
+    # agent = load_chapter_content_loader_agent()
+
+    # ------------------------- saving workflow diagram ----------------
+    # png_bytes = workflow.get_graph().draw_mermaid_png()
+
+    # with open("ch_content_loader_subagent.png", "wb") as f:
+    #     f.write(png_bytes)
+
+    print()
+
 
 
 

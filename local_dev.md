@@ -5,7 +5,7 @@
 > [!WARNING]
 > 
 > - Due to free quota limits, embedding model can save upto 100 chunks only
-> - It's glue code is written in `faiss_manager.py`
+> - so it's glue code is written in `faiss_manager.py`
 
 <br>
 <br>
@@ -27,6 +27,34 @@ Solution: Use genunine methods to load a particular chapter content. Handle this
 It will be descrease about ~20 seconds of latency.
 
 
+### 3) Vector stores load 2 times, first while loading main agent and secod while loading rag in chapter content loader (subagent).
+
+Reason: Beacuse `Podagent` (main) and `ch_loader_agent` (subagent) both need the RAG.
+Solution: we can load RAG only a single time and it can be passed accessible to both main agent and subagent.
+
+
+## Architectures
+
+<br>
+<br>
+
+> Podagent Architecture (Main Agent)
+
+![Podgent Architecture](podagent.png)
+
+
+<br>
+<br>
+
+> Chapter Content Loader Agent Architecture (Sub agent)
+
+![Sub Agent - Chapter Content Loader Agent](chapter_content_loader_subagent.png)
 
 
 
+<br>
+<br>
+
+> Quiz Generator Agent Architecture (Sub agent)
+
+![Sub Agent - Quiz Generator Agent](quiz_generator_subagent.png)

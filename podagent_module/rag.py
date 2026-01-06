@@ -8,12 +8,16 @@ from typing import Literal, Dict, List, Annotated, Optional
 from langchain_community.vectorstores import FAISS
 
 # local 
-from pdf_processor import PDFProcessor
-from configs import PodagentConfigs
-from faiss_manager import FAISSTempManager
+# from podagent_module import PDFProcessor, PodagentConfigs, FAISSTempManager
+# from pdf_processor import PDFProcessor
+# from configs import PodagentConfigs
+# from faiss_manager import FAISSTempManager
+from podagent_module.pdf_processor import PDFProcessor
+from podagent_module.configs import PodagentConfigs, EMBEDDING_MODEL
+from podagent_module.faiss_manager import FAISSTempManager
 
 # built in
-from configs import EMBEDDING_MODEL
+# from configs import EMBEDDING_MODEL
 
 
 

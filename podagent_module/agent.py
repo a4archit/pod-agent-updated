@@ -14,10 +14,12 @@ from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
 # local
-from rag import ConversationalAgenticRAG
-from configs import PodagentConfigs
-from subagents.chapter_content_loader import load_chapter_content_loader_agent, ChapterContentLoaderAgentState
-from subagents.quiz_generator import load_quiz_generator_agent, GenerateQuizAgentState, MCQ
+# from rag import ConversationalAgenticRAG
+from podagent_module import *
+# from configs import PodagentConfigs
+# from utils import save_workflow_diagram
+# from subagents.chapter_content_loader import load_chapter_content_loader_agent, ChapterContentLoaderAgentState
+# from subagents.quiz_generator import load_quiz_generator_agent, GenerateQuizAgentState, MCQ
 
 # built-in
 from typing import List, Optional, Literal, Annotated, Dict
@@ -45,7 +47,9 @@ chapter_content_loader_subagent = load_chapter_content_loader_agent()
 quiz_generator_subagent = load_quiz_generator_agent()
 
 
-
+# ---------------- saving workflows (sub agents) diagrams -------------------
+save_workflow_diagram(chapter_content_loader_subagent, name="chapter_content_loader_subagent.png")
+save_workflow_diagram(quiz_generator_subagent, name="quiz_generator_subagent.png")
 
 
 
@@ -475,6 +479,16 @@ workflow = graph.compile()
 
 
 
+def load_podagent():
+    return workflow, PodagentSchema
+
+
+
+
+
+
+
+
 #------------------------------------------------------------------------------------------
 # Test agent
 #------------------------------------------------------------------------------------------
@@ -484,11 +498,15 @@ def test_agent():
     prompt = "how many chapters in the book"
     # prompt = "how many states in india"
     initial_state = PodagentSchema(messages=[HumanMessage(content=prompt)])
-    response = workflow.invoke(initial_state)
+    # response = workflow.invoke(initial_state)
+
+    for event in workflow.stream(initial_state):
+        print(event)
+
 
     # print(response)
 
-    print(f"\n\nAI) {response['messages'][-1].content}")
+    # print(f"\n\nAI) {response['messages'][-1].content}")
 
 
 
@@ -504,6 +522,7 @@ if __name__ == "__main__":
     # t2()
 
     test_agent()
+    # print()
 
     # print(workflow.get_graph().draw_mermaid())
 
