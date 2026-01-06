@@ -77,13 +77,13 @@ class PodAgent:
             source="agent",
             path=orchestrator,
             path_map={
-                'generate_quiz': 'quiz_generator', 
-                'load_chapter_content': 'ch_content_loader',
+                'generate_quiz': 'ch_content_loader', 
+                # 'load_chapter_content': 'ch_content_loader',
                 'end': END
             }
         )
-        graph.add_edge("quiz_generator","agent")
-        graph.add_edge("ch_content_loader", "agent")
+        graph.add_edge("ch_content_loader", "quiz_generator")
+        graph.add_edge("quiz_generator",END)
 
 
         # ----------------------- extracting workflow ---------------------
@@ -190,7 +190,7 @@ class PodagentSchema(BaseModel):
     ] = None 
 
     quiz: Annotated[
-        Optional[List[MCQ]],
+        Optional[Dict[str,list]],
         Field(
             ...,
             title="quiz",
@@ -253,7 +253,6 @@ Your goal is to select EXACTLY ONE next action based on:
 ====================
 AVAILABLE SUB AGENTS
 ====================
-`load_chapter_content`  → Loads the content of a chapter  
 `generate_quiz`         → Generates a quiz from chapter content  
 
 ====================
@@ -267,13 +266,10 @@ STATE-BASED RULES (MANDATORY)
 1. If `quiz` in agent state has any value other than None:
    - You MUST return: `end`
 
-2. Else if `chapter_content` in agent state has any value other than None:
+2. Else if `chapter_content` in agent state has any value other than None/"None":
    - You are allowed ONLY these options:
+   - If `chapter_content` is None or "None" then call `generate_quiz` first.
      ["generate_quiz", "end"]
-
-3. Else (both `chapter_content` and `quiz` are None):
-   - You may choose from:
-     ["load_chapter_content", "end"]
 
 4. If you are satisfy with the agent's answer with respect to query then:
     - You must return: `end`
@@ -296,7 +292,7 @@ DECISION INSTRUCTIONS
 ====================
 - Select ONLY ONE option.
 - Your selection MUST be one of:
-  ["generate_quiz", "load_chapter_content", "end"]
+  ["generate_quiz", "end"]
 - If no sub-agent is required, return `end`.
 - Do NOT explain your reasoning.
 - Do NOT include markdown.
@@ -334,7 +330,7 @@ class OrchestratorOutputParserSchema(BaseModel):
 
 def orchestrator(
         state: PodagentSchema
-    ) -> Literal["generate_quiz","load_chapter_content","end"]:
+    ) -> Literal["generate_quiz","end"]:
 
     print(" ((orchestrator)) ", end="")
 
@@ -424,8 +420,9 @@ Decision Rules:
    - questions
    - MCQs
    - assessments  
-   then respond EXACTLY with:
-   "you need to call quiz_generator sub agent"
+   then respond something like:
+   'here i share some mcqs, related to the chapter, etc'
+
 3. If the answer is NOT present in retrieved_docs and the query does NOT demand a quiz:
    - Respond EXACTLY with:
    "answer is not in the knowledge base"
@@ -563,7 +560,7 @@ def quiz_generator_subagent_node(state: PodagentSchema):
 
     print(" -> ", end="")
 
-    return { 'quiz': final_state.model_dump()['quiz'] }
+    return { 'quiz': final_state['quiz'] }
 
 
 

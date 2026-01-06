@@ -31,6 +31,33 @@ def stream_agent_response(message: str) :
 
 
 
+@st.dialog("Quiz")
+def quiz_dialog(quiz_mcqs):
+    answers = list()
+    for index,mcq in enumerate(quiz_mcqs):
+        # st.write(f"{index+1}) {mcq['question']}")
+        ans = st.radio(
+            f"{index+1}) {mcq['question']}",
+            mcq['options'],
+            captions=[
+                "Laugh out loud.",
+                "Get the popcorn.",
+                "Never stop learning.",
+            ],
+        )
+
+        answers.append(ans)
+
+    if st.button("Submit"):
+        score = 0
+        total_score = 10
+
+        for index,ques in enumerate(quiz_mcqs):
+            if answers[index] == ques['right_option']:
+                score += 2
+
+        st.write(f"You got {score}/{total_score}")
+
 
 
 
@@ -157,6 +184,13 @@ def working_page() -> None:
                 print(final_state)
                 ai_msg = final_state['messages'][-1].content
 
+                try:
+                    quiz_mcqs = final_state['quiz']['mcqs']
+                    quiz_dialog(quiz_mcqs)
+
+                except Exception as e:
+                    print("No MCQs fetch from Agent's Final State.")
+            
                 # Save bot message
                 st.session_state.messages.append({"role": "assistant", "content": ai_msg})
 
