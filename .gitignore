@@ -4,3 +4,4 @@ venv
 *.pdf
 *faiss
 __pycache__
+.logs.txt
