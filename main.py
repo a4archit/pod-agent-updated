@@ -38,7 +38,8 @@ def quiz_dialog(quiz_mcqs):
         # st.write(f"{index+1}) {mcq['question']}")
         ans = st.radio(
             f"{index+1}) {mcq['question']}",
-            mcq['options']
+            mcq['options'],
+            index=None
         )
 
         answers.append(ans)
