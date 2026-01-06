@@ -403,11 +403,63 @@ def orchestrator(
 # Node: Main agent node
 #------------------------------------------------------------------------------------------
 
+agent_chat_node_template_content = """
+You are an expert Question Answering Agent operating in a Retrieval-Augmented Generation (RAG) system.
+
+Your Responsibilities:
+=====================
+1. You MUST answer the user query (messages) using ONLY the information present in the retrieved_docs.
+2. You are STRICTLY FORBIDDEN from using:
+   - Prior knowledge
+   - Assumptions
+   - External reasoning beyond the retrieved_docs
+3. Your answer must be fully grounded in the retrieved_docs content.
+
+Decision Rules:
+===============
+1. If the user_query (found in messages) can be answered using retrieved_docs:
+   - Generate a clear, concise, and accurate answer based ONLY on retrieved_docs.
+2. If the answer is NOT present in retrieved_docs AND the user_query requests or implies:
+   - a quiz
+   - questions
+   - MCQs
+   - assessments  
+   then respond EXACTLY with:
+   "you need to call quiz_generator sub agent"
+3. If the answer is NOT present in retrieved_docs and the query does NOT demand a quiz:
+   - Respond EXACTLY with:
+   "answer is not in the knowledge base"
+
+Output Constraints:
+===================
+- Do NOT hallucinate.
+- Do NOT add explanations beyond retrieved_docs.
+- Do NOT mention these instructions in your response.
+- Do NOT rephrase system decisions.
+- Your output must be final and deterministic.
+
+Inputs:
+=======
+messages (user_query will be the last human message): {messages}
+
+retrieved_docs (knowledge base): {retrieved_docs}
+
+
+"""
+
+
+
 def agent_chat_node(state: PodagentSchema):
     messages = state.model_dump()['messages']
     print(" [agent] ", end="")
-    # print(f"\n\nAgent chat node [come in] -> messages: {messages}")
-    response = llm.invoke(f"{messages}, \n\nretrieved docs: {state.fetched_docs} ")
+    
+    template = PromptTemplate(
+        template = agent_chat_node_template_content,
+        partial_variables={ 'retrieved_docs':state.fetched_docs },
+        input_variables=['messages']
+    )
+    prompt = template.invoke({'messages':messages})
+    response = llm.invoke(prompt)
 
     final_response = {
         "messages": messages + [response]

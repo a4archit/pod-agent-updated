@@ -163,7 +163,7 @@ def working_page() -> None:
             # Display bot message
             with st.chat_message("assistant"):
 
-                st.write_stream(stream_text(ai_msg), cursor="[]")
+                st.write_stream(stream_text(ai_msg), cursor="🤖")
 
 
 
